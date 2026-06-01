@@ -1,0 +1,4 @@
+conf/app.conf
+data/
+*.csv
+expense-tracker-api

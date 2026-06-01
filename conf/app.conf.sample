@@ -1,0 +1,7 @@
+appname = expense-tracker-api
+httpport = 8080
+runmode = dev
+copyrequestbody = true
+users_csv_path = data/users.csv
+expenses_csv_path = data/expenses.csv
+enabledocs = true
