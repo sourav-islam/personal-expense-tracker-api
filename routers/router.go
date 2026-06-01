@@ -1,19 +1,18 @@
+// Package routers registers all application routes.
 package routers
 
 import (
 	"expense-tracker-api/controllers"
 
-	"github.com/beego/beego/v2/server/web"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// Init initializes the routes.
-func Init() {
-	ns := web.NewNamespace("/api/v1",
-		web.NSNamespace("/auth",
-			web.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
-			web.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
-		),
-		web.NSRouter("/health", &controllers.HealthController{}, "get:Get"),
-	)
-	web.AddNamespace(ns)
+// Init registers all API routes for the application.
+func init() {
+	// Health
+	beego.Router("/api/v1/health", &controllers.HealthController{}, "get:Get")
+
+	// Auth
+	beego.Router("/api/v1/auth/register", &controllers.AuthController{}, "post:Register")
+	beego.Router("/api/v1/auth/login", &controllers.AuthController{}, "post:Login")
 }

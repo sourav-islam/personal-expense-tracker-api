@@ -1,4 +1,18 @@
+# Config with real values — never commit
 conf/app.conf
+
+# Auto-generated data files
 data/
 *.csv
-expense-tracker-api
+
+# Compiled binary
+personal-expense-tracker-api
+
+# Go build cache
+*.exe
+*.out
+*.test
+
+# Swagger generated
+docs/swagger.json
+docs/swagger.yml

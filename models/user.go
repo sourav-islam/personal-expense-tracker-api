@@ -1,65 +1,94 @@
+// Package models handles all data structures and CSV file operations.
 package models
 
 import (
 	"encoding/csv"
-	"io"
+	"errors"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/beego/beego/v2/server/web"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
-// User represents a user in the system.
+// User represents a registered user in the system.
 type User struct {
-	ID        int
-	Name      string
-	Email     string
-	Password  string
-	CreatedAt string
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	CreatedAt string `json:"created_at"`
 }
 
-// GetAllUsers reads all users from the CSV file.
+// csvHeader is the fixed header row for users.csv.
+var csvHeader = []string{"id", "name", "email", "password", "created_at"}
+
+// getUsersCSVPath returns the file path for users.csv from config.
+func getUsersCSVPath() string {
+	return beego.AppConfig.DefaultString("users_csv_path", "data/users.csv")
+}
+
+// ensureUsersCSV creates the users CSV file with header if it does not exist.
+func ensureUsersCSV(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Ensure parent directory exists
+		dir := path[:strings.LastIndex(path, "/")]
+		if dir != "" {
+			if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+				return err
+			}
+		}
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		w := csv.NewWriter(f)
+		if err := w.Write(csvHeader); err != nil {
+			return err
+		}
+		w.Flush()
+		return w.Error()
+	}
+	return nil
+}
+
+// GetAllUsers reads and returns all users from the CSV file.
 func GetAllUsers() ([]User, error) {
-	filePath, err := web.AppConfig.String("users_csv_path")
-	if err != nil {
-		logs.Error("Failed to get users_csv_path from config: %v", err)
+	path := getUsersCSVPath()
+	if err := ensureUsersCSV(path); err != nil {
+		logs.Error("Failed to ensure users CSV:", err)
 		return nil, err
 	}
 
-	file, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return []User{}, nil
-		}
-		logs.Error("Failed to open users CSV file: %v", err)
+		logs.Error("Failed to open users CSV:", err)
 		return nil, err
 	}
-	defer file.Close()
+	defer f.Close()
 
-	reader := csv.NewReader(file)
-	// Skip header
-	_, err = reader.Read()
+	reader := csv.NewReader(f)
+	records, err := reader.ReadAll()
 	if err != nil {
-		if err == io.EOF {
-			return []User{}, nil
-		}
-		logs.Error("Failed to read header from users CSV: %v", err)
+		logs.Error("Failed to read users CSV:", err)
 		return nil, err
 	}
 
 	var users []User
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
+	// Skip header row (index 0)
+	for _, record := range records[1:] {
+		if len(record) < 5 {
+			logs.Warn("Skipping malformed user row:", record)
+			continue
 		}
+		id, err := strconv.Atoi(record[0])
 		if err != nil {
-			logs.Error("Failed to read record from users CSV: %v", err)
-			return nil, err
+			logs.Warn("Skipping user row with invalid ID:", record[0])
+			continue
 		}
-
-		id, _ := strconv.Atoi(record[0])
 		users = append(users, User{
 			ID:        id,
 			Name:      record[1],
@@ -72,53 +101,76 @@ func GetAllUsers() ([]User, error) {
 	return users, nil
 }
 
-// GetUserByEmail finds a user by their email address.
+// GetUserByEmail finds and returns a user matching the given email.
+// Returns nil and no error if the user is not found.
 func GetUserByEmail(email string) (*User, error) {
 	users, err := GetAllUsers()
 	if err != nil {
 		return nil, err
 	}
-
-	for _, user := range users {
-		if user.Email == email {
-			return &user, nil
+	for _, u := range users {
+		if strings.EqualFold(u.Email, email) {
+			return &u, nil
 		}
 	}
-
 	return nil, nil
 }
 
-// CreateUser appends a new user to the CSV file.
-func CreateUser(user *User) error {
-	filePath, err := web.AppConfig.String("users_csv_path")
+// GetUserByID finds and returns a user matching the given ID.
+// Returns nil and no error if the user is not found.
+func GetUserByID(id int) (*User, error) {
+	users, err := GetAllUsers()
 	if err != nil {
-		logs.Error("Failed to get users_csv_path from config: %v", err)
-		return err
+		return nil, err
 	}
-
-	fileExists := true
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		fileExists = false
-	}
-
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		logs.Error("Failed to open users CSV file for writing: %v", err)
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	if !fileExists {
-		header := []string{"id", "name", "email", "password", "created_at"}
-		if err := writer.Write(header); err != nil {
-			logs.Error("Failed to write header to users CSV: %v", err)
-			return err
+	for _, u := range users {
+		if u.ID == id {
+			return &u, nil
 		}
 	}
+	return nil, nil
+}
 
+// GetNextUserID returns the next available user ID based on
+// the highest existing ID in the CSV file.
+func GetNextUserID() (int, error) {
+	users, err := GetAllUsers()
+	if err != nil {
+		return 0, err
+	}
+	maxID := 0
+	for _, u := range users {
+		if u.ID > maxID {
+			maxID = u.ID
+		}
+	}
+	return maxID + 1, nil
+}
+
+// CreateUser appends a new user record to the CSV file.
+// It creates the file with headers if it does not already exist.
+func CreateUser(user *User) error {
+	path := getUsersCSVPath()
+	if err := ensureUsersCSV(path); err != nil {
+		logs.Error("Failed to ensure users CSV before creating user:", err)
+		return err
+	}
+
+	nextID, err := GetNextUserID()
+	if err != nil {
+		return err
+	}
+	user.ID = nextID
+	user.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		logs.Error("Failed to open users CSV for append:", err)
+		return err
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
 	record := []string{
 		strconv.Itoa(user.ID),
 		user.Name,
@@ -126,28 +178,37 @@ func CreateUser(user *User) error {
 		user.Password,
 		user.CreatedAt,
 	}
-
-	if err := writer.Write(record); err != nil {
-		logs.Error("Failed to write user record to CSV: %v", err)
+	if err := w.Write(record); err != nil {
+		logs.Error("Failed to write user record:", err)
+		return err
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		logs.Error("CSV writer flush error:", err)
 		return err
 	}
 
+	logs.Info("Created user ID:", user.ID, "Email:", user.Email)
 	return nil
 }
 
-// GetNextUserID returns the next available user ID.
-func GetNextUserID() (int, error) {
-	users, err := GetAllUsers()
-	if err != nil {
-		return 0, err
+// ValidateEmail checks whether the given string is a valid email format.
+func ValidateEmail(email string) bool {
+	if !strings.Contains(email, "@") {
+		return false
 	}
-
-	maxID := 0
-	for _, user := range users {
-		if user.ID > maxID {
-			maxID = user.ID
-		}
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return false
 	}
-
-	return maxID + 1, nil
+	if len(parts[0]) == 0 || len(parts[1]) == 0 {
+		return false
+	}
+	if !strings.Contains(parts[1], ".") {
+		return false
+	}
+	return true
 }
+
+// ErrUserNotFound is returned when a requested user does not exist.
+var ErrUserNotFound = errors.New("user not found")

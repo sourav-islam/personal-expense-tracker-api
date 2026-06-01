@@ -3,57 +3,74 @@ package controllers
 import (
 	"encoding/json"
 	"expense-tracker-api/models"
-	"net/mail"
-	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 )
 
-// AuthController handles authentication requests.
+// AuthController handles user registration and login.
 type AuthController struct {
 	BaseController
 }
 
-// RegisterInput represents the input for user registration.
-type RegisterInput struct {
+// registerInput defines the expected JSON body for registration.
+type registerInput struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// LoginInput represents the input for user login.
-type LoginInput struct {
+// loginInput defines the expected JSON body for login.
+type loginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// Register handles user registration.
+// loginData is the data payload returned on successful login.
+type loginData struct {
+	UserID int    `json:"user_id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+}
+
+// Register godoc
 // @Title Register
-// @Summary Register a new user
-// @Param body body controllers.RegisterInput true "Registration payload"
-// @Success 201 {object} controllers.JSONResponse
-// @Failure 400 {object} controllers.JSONResponse
-// @Failure 409 {object} controllers.JSONResponse
-// @Failure 500 {object} controllers.JSONResponse
+// @Summary Register a new user account
+// @Description Creates a new user with name, email, and password
+// @Param body body controllers.registerInput true "Registration payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @router /api/v1/auth/register [post]
 func (c *AuthController) Register() {
-	var input RegisterInput
+	logs.Info("Register endpoint called")
+
+	var input registerInput
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &input); err != nil {
-		logs.Error("Failed to unmarshal registration input: %v", err)
+		logs.Warn("Register: failed to parse request body:", err)
 		c.SendError(400, "Invalid request body")
 		return
 	}
 
+	// Validate name
 	if input.Name == "" {
 		c.SendError(400, "Name is required")
 		return
 	}
+
+	// Validate email
 	if input.Email == "" {
 		c.SendError(400, "Email is required")
 		return
 	}
-	if _, err := mail.ParseAddress(input.Email); err != nil {
+	if !models.ValidateEmail(input.Email) {
 		c.SendError(400, "Invalid email format")
+		return
+	}
+
+	// Validate password
+	if input.Password == "" {
+		c.SendError(400, "Password is required")
 		return
 	}
 	if len(input.Password) < 6 {
@@ -61,57 +78,55 @@ func (c *AuthController) Register() {
 		return
 	}
 
-	existingUser, err := models.GetUserByEmail(input.Email)
+	// Check duplicate email
+	existing, err := models.GetUserByEmail(input.Email)
 	if err != nil {
-		logs.Error("Failed to check existing user: %v", err)
+		logs.Error("Register: error checking existing email:", err)
 		c.SendError(500, "Failed to register user")
 		return
 	}
-	if existingUser != nil {
+	if existing != nil {
+		logs.Warn("Register: duplicate email attempt:", input.Email)
 		c.SendError(409, "Email already exists")
 		return
 	}
 
-	nextID, err := models.GetNextUserID()
-	if err != nil {
-		logs.Error("Failed to get next user ID: %v", err)
+	// Create the user
+	newUser := &models.User{
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: input.Password,
+	}
+	if err := models.CreateUser(newUser); err != nil {
+		logs.Error("Register: failed to create user:", err)
 		c.SendError(500, "Failed to register user")
 		return
 	}
 
-	user := &models.User{
-		ID:        nextID,
-		Name:      input.Name,
-		Email:     input.Email,
-		Password:  input.Password,
-		CreatedAt: time.Now().Format(time.RFC3339),
-	}
-
-	if err := models.CreateUser(user); err != nil {
-		logs.Error("Failed to create user: %v", err)
-		c.SendError(500, "Failed to register user")
-		return
-	}
-
+	logs.Info("Register: new user created, email:", input.Email)
 	c.SendSuccess(201, "User registered successfully", nil)
 }
 
-// Login handles user login.
+// Login godoc
 // @Title Login
-// @Summary User login
-// @Param body body controllers.LoginInput true "Login payload"
-// @Success 200 {object} controllers.JSONResponse
-// @Failure 400 {object} controllers.JSONResponse
-// @Failure 401 {object} controllers.JSONResponse
+// @Summary Log in with email and password
+// @Description Authenticates a user and returns their profile data
+// @Param body body controllers.loginInput true "Login payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
 // @router /api/v1/auth/login [post]
 func (c *AuthController) Login() {
-	var input LoginInput
+	logs.Info("Login endpoint called")
+
+	var input loginInput
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &input); err != nil {
-		logs.Error("Failed to unmarshal login input: %v", err)
+		logs.Warn("Login: failed to parse request body:", err)
 		c.SendError(400, "Invalid request body")
 		return
 	}
 
+	// Validate fields
 	if input.Email == "" {
 		c.SendError(400, "Email is required")
 		return
@@ -121,23 +136,23 @@ func (c *AuthController) Login() {
 		return
 	}
 
+	// Find user by email
 	user, err := models.GetUserByEmail(input.Email)
 	if err != nil {
-		logs.Error("Failed to get user by email: %v", err)
-		c.SendError(500, "Failed to login")
+		logs.Error("Login: error looking up user:", err)
+		c.SendError(500, "Internal server error")
 		return
 	}
-
 	if user == nil || user.Password != input.Password {
+		logs.Warn("Login: invalid credentials for email:", input.Email)
 		c.SendError(401, "Invalid email or password")
 		return
 	}
 
-	data := map[string]interface{}{
-		"user_id": user.ID,
-		"name":    user.Name,
-		"email":   user.Email,
-	}
-
-	c.SendSuccess(200, "Login successful", data)
+	logs.Info("Login: successful for user ID:", user.ID)
+	c.SendSuccess(200, "Login successful", loginData{
+		UserID: user.ID,
+		Name:   user.Name,
+		Email:  user.Email,
+	})
 }

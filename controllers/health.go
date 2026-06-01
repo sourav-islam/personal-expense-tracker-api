@@ -1,15 +1,25 @@
 package controllers
 
-// HealthController handles health check requests.
+import (
+	"github.com/beego/beego/v2/core/logs"
+	beego "github.com/beego/beego/v2/server/web"
+)
+
+// HealthController handles the health check endpoint.
 type HealthController struct {
-	BaseController
+	beego.Controller
 }
 
-// Get handles the health check request.
-// @Title Get
-// @Summary Health check
-// @Success 200 {object} controllers.JSONResponse
+// Get godoc
+// @Title Health Check
+// @Summary Returns server running status
+// @Success 200 {object} map[string]interface{}
 // @router /api/v1/health [get]
 func (c *HealthController) Get() {
-	c.SendSuccess(200, "Server is running", nil)
+	logs.Info("Health check called")
+	c.Data["json"] = map[string]interface{}{
+		"success": true,
+		"message": "Server is running",
+	}
+	c.ServeJSON()
 }
