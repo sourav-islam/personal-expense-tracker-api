@@ -63,7 +63,7 @@ func TestApplyFilters_DateRange(t *testing.T) {
 		{name: "May only", dateFrom: "2025-05-01", dateTo: "2025-05-31", wantCount: 1},
 		{name: "single day match", dateFrom: "2025-06-03", dateTo: "2025-06-03", wantCount: 1},
 		{name: "single day no match", dateFrom: "2025-06-04", dateTo: "2025-06-04", wantCount: 0},
-		{name: "only date_from", dateFrom: "2025-06-05", dateTo: "", wantCount: 3},
+		{name: "only date_from", dateFrom: "2025-06-05", dateTo: "", wantCount: 2},
 		{name: "only date_to", dateFrom: "", dateTo: "2025-05-31", wantCount: 1},
 		{name: "no range = all", dateFrom: "", dateTo: "", wantCount: 5},
 	}

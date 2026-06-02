@@ -257,6 +257,12 @@ func CreateExpense(expense *Expense) error {
 func UpdateExpense(updated *Expense) error {
 	path := getExpensesCSVPath()
 
+	// Ensure file exists before attempting to read
+	if err := ensureExpensesCSV(path); err != nil {
+		logs.Error("Failed to ensure expenses CSV before update:", err)
+		return err
+	}
+
 	records, err := readAllExpenseRecords(path)
 	if err != nil {
 		logs.Error("Failed to read expenses CSV for update:", err)
@@ -273,7 +279,6 @@ func UpdateExpense(updated *Expense) error {
 			continue
 		}
 		if id == updated.ID {
-			// Preserve original created_at
 			updated.CreatedAt = record[7]
 			records[i+1] = expenseToRecord(updated)
 			found = true
@@ -297,9 +302,14 @@ func UpdateExpense(updated *Expense) error {
 
 // DeleteExpense removes an expense by ID from the CSV file,
 // only if it belongs to the given user ID.
-// It rewrites the entire file without the deleted row.
 func DeleteExpense(id int, userID int) error {
 	path := getExpensesCSVPath()
+
+	// Ensure file exists before attempting to read
+	if err := ensureExpensesCSV(path); err != nil {
+		logs.Error("Failed to ensure expenses CSV before delete:", err)
+		return err
+	}
 
 	records, err := readAllExpenseRecords(path)
 	if err != nil {
@@ -307,7 +317,7 @@ func DeleteExpense(id int, userID int) error {
 		return err
 	}
 
-	newRecords := [][]string{records[0]} // keep header
+	newRecords := [][]string{records[0]}
 	found := false
 
 	for _, record := range records[1:] {
@@ -324,7 +334,7 @@ func DeleteExpense(id int, userID int) error {
 		}
 		if expID == id && expUserID == userID {
 			found = true
-			continue // skip this row = delete it
+			continue
 		}
 		newRecords = append(newRecords, record)
 	}

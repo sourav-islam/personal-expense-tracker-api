@@ -125,7 +125,7 @@ func (c *ExpenseController) parseFilterParams() (models.FilterParams, string) {
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses [post]
+// @router / [post]
 func (c *ExpenseController) Create() {
 	logs.Info("Create expense endpoint called")
 
@@ -169,7 +169,7 @@ func (c *ExpenseController) Create() {
 
 // List godoc
 // @Title List Expenses
-// @Summary List expenses for the authenticated user with optional filters and sorting
+// @Summary List expenses with optional filters and sorting
 // @Param X-User-ID header int true "User ID"
 // @Param category query string false "Filter by category"
 // @Param date_from query string false "Filter from date (YYYY-MM-DD)"
@@ -181,7 +181,7 @@ func (c *ExpenseController) Create() {
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses [get]
+// @router / [get]
 func (c *ExpenseController) List() {
 	logs.Info("List expenses endpoint called")
 
@@ -225,7 +225,7 @@ func (c *ExpenseController) List() {
 // @Failure 401 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses/:id [get]
+// @router /:id [get]
 func (c *ExpenseController) GetOne() {
 	logs.Info("GetOne expense endpoint called")
 
@@ -268,7 +268,7 @@ func (c *ExpenseController) GetOne() {
 // @Failure 401 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses/:id [put]
+// @router /:id [put]
 func (c *ExpenseController) Update() {
 	logs.Info("Update expense endpoint called")
 
@@ -340,7 +340,7 @@ func (c *ExpenseController) Update() {
 // @Failure 401 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses/:id [delete]
+// @router /:id [delete]
 func (c *ExpenseController) Delete() {
 	logs.Info("Delete expense endpoint called")
 
@@ -380,7 +380,7 @@ func (c *ExpenseController) Delete() {
 
 // Summary godoc
 // @Title Expense Summary
-// @Summary Get a spending summary grouped by category for the authenticated user
+// @Summary Get spending summary grouped by category
 // @Param X-User-ID header int true "User ID"
 // @Param date_from query string true "Start date (YYYY-MM-DD)"
 // @Param date_to query string true "End date (YYYY-MM-DD)"
@@ -388,7 +388,7 @@ func (c *ExpenseController) Delete() {
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/expenses/summary [get]
+// @router /summary [get]
 func (c *ExpenseController) Summary() {
 	logs.Info("Summary endpoint called")
 

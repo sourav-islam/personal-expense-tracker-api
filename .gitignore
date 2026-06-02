@@ -16,3 +16,4 @@ expense-tracker-api
 # Swagger generated specs — these are auto-generated, don't commit
 swagger/swagger.json
 swagger/swagger.yml
+coverage.out

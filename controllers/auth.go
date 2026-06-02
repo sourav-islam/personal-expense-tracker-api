@@ -41,7 +41,7 @@ type loginData struct {
 // @Failure 400 {object} map[string]interface{}
 // @Failure 409 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @router /api/v1/auth/register [post]
+// @router /register [post]
 func (c *AuthController) Register() {
 	logs.Info("Register endpoint called")
 
@@ -115,7 +115,7 @@ func (c *AuthController) Register() {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @router /api/v1/auth/login [post]
+// @router /login [post]
 func (c *AuthController) Login() {
 	logs.Info("Login endpoint called")
 
