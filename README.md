@@ -1,7 +1,13 @@
 # Personal Expense Tracker API
 
-A RESTful API built with **Go** and **Beego v2** for tracking personal expenses.
-All data is stored in CSV files using Go's standard `encoding/csv` library.
+The Personal Expense Tracker API is a backend RESTful service built using Go and the Beego v2 framework (API mode). This project is developed as part of an assignment in collaboration with `W3 Engineers Ltd`.
+
+The system allows users to securely register and log in, and then manage their daily personal expenses efficiently. Users can perform full CRUD operations on expenses, apply filters and sorting, and view summarized spending reports.
+
+All data is stored in CSV files using Go's standard `encoding/csv` library and custom utility functions are implemented to handle file reading and writing operations without relying on a database system.
+
+This project is designed as a 4-day structured backend assignment, focusing on clean architecture, API design, data handling, and testing practices.
+
 
 ---
 
