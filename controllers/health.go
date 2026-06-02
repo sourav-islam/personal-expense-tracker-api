@@ -14,12 +14,14 @@ type HealthController struct {
 // @Title Health Check
 // @Summary Returns server running status
 // @Success 200 {object} map[string]interface{}
-// @router /api/v1/health [get]
+// @router /health [get]
 func (c *HealthController) Get() {
 	logs.Info("Health check called")
+
 	c.Data["json"] = map[string]interface{}{
 		"success": true,
 		"message": "Server is running",
 	}
+
 	c.ServeJSON()
 }

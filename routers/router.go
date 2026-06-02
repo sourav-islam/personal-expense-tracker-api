@@ -29,6 +29,9 @@ func init() {
 
 	// ── Namespace for swagger doc generation only ──────────────────────
 	ns := beego.NewNamespace("/api/v1",
+		beego.NSInclude(
+			&controllers.HealthController{},
+		),
 		beego.NSNamespace("/auth",
 			beego.NSInclude(
 				&controllers.AuthController{},
