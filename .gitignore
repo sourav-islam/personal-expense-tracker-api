@@ -6,13 +6,13 @@ data/
 *.csv
 
 # Compiled binary
-personal-expense-tracker-api
+expense-tracker-api
 
 # Go build cache
 *.exe
 *.out
 *.test
 
-# Swagger generated
-docs/swagger.json
-docs/swagger.yml
+# Swagger generated specs — these are auto-generated, don't commit
+swagger/swagger.json
+swagger/swagger.yml
